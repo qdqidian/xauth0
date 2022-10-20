@@ -1,0 +1,12 @@
+{
+  order auth0 after basicauth
+}
+http://localhost {
+  route /history/paging {
+    auth0 http://localhost:8000/v1/check
+
+    reverse_proxy :9529 {
+        header_up  x-global-user-id {auth0.user.id}
+    }
+  }
+}
