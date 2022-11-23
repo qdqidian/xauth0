@@ -7,7 +7,8 @@ import (
 
 type Auth0Writer struct {
 	http.ResponseWriter
-	body *bytes.Buffer
+	body       *bytes.Buffer
+	StatusCode int
 }
 
 func (w Auth0Writer) Write(b []byte) (int, error) {
@@ -16,4 +17,9 @@ func (w Auth0Writer) Write(b []byte) (int, error) {
 
 func (w Auth0Writer) WriteString(s string) (int, error) {
 	return w.body.WriteString(s)
+}
+
+func (w Auth0Writer) WriteHeader(code int) {
+	w.StatusCode = code
+	w.ResponseWriter.WriteHeader(code)
 }

@@ -125,7 +125,8 @@ func (a *HTTPAuth0Auth) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 	err = next.ServeHTTP(writer, r)
 	// 字段级权限处理
 	body := writer.body.String()
-	if body == "" || err != nil {
+	// todo:: 状态码不为200，则直接跳过
+	if body == "" || err != nil || writer.StatusCode != 200 {
 		return err
 	}
 
