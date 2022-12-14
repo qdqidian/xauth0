@@ -3,6 +3,7 @@ package xauth0
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
@@ -92,11 +93,15 @@ func (a *HTTPAuth0Auth) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 		result, _ := io.ReadAll(resp.Body)
 		resultBody := string(result)
 		a.logger.Warn("auth0 return status is not 200. body: ", zap.String("resp body: ", resultBody))
-		return caddyhttp.Error(resp.StatusCode, fmt.Errorf(resultBody))
+
+		return errors.New(resultBody)
 	}
 
 	var res Res
-	httpClient.DecodeResponse(resp, &res)
+	err = httpClient.DecodeResponse(resp, &res)
+	if err != nil {
+		return err
+	}
 
 	repl := r.Context().Value(caddy.ReplacerCtxKey).(*caddy.Replacer)
 	if res.User != nil {
@@ -126,8 +131,11 @@ func (a *HTTPAuth0Auth) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 	// 字段级权限处理
 	body := writer.body.String()
 	// todo:: 状态码不为200，则直接跳过
-	if body == "" || err != nil || writer.StatusCode != 200 {
+	if body == "" || err != nil {
 		return err
+	}
+	if writer.StatusCode != 200 {
+		return caddyhttp.Error(writer.StatusCode, fmt.Errorf(body))
 	}
 
 	resultBody := json_filter.Filter(res.FieldPermissionDefine, body)
