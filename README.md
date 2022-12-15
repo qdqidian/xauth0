@@ -15,3 +15,12 @@ caddy auth0插件，负责在指定的url中认证授权
 
 auth0排序到basicauth后面
 order auth0 after basicauth
+
+
+运行
+```sh
+xcaddy run --config ./file/Caddyfile
+```
+goland debug运行:
+Program arguments:
+run --config ../file/Caddyfile 

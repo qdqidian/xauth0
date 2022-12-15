@@ -3,7 +3,6 @@ package xauth0
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
@@ -89,12 +88,9 @@ func (a *HTTPAuth0Auth) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 		return err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		result, _ := io.ReadAll(resp.Body)
-		resultBody := string(result)
-		a.logger.Warn("auth0 return status is not 200. body: ", zap.String("resp body: ", resultBody))
-
-		return errors.New(resultBody)
+		return a.returnError(w, resp.StatusCode, result)
 	}
 
 	var res Res
@@ -130,16 +126,21 @@ func (a *HTTPAuth0Auth) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 	err = next.ServeHTTP(writer, r)
 	// 字段级权限处理
 	body := writer.body.String()
-	// todo:: 状态码不为200，则直接跳过
 	if body == "" || err != nil {
 		return err
 	}
-	if writer.StatusCode != 200 {
-		return caddyhttp.Error(writer.StatusCode, fmt.Errorf(body))
+	if writer.StatusCode != http.StatusOK {
+		return a.returnError(w, writer.StatusCode, []byte(body))
 	}
 
 	resultBody := json_filter.Filter(res.FieldPermissionDefine, body)
 	_, err = w.Write(resultBody)
 	a.logger.Debug("json filter. ", zap.String("originBody: ", body), zap.String("define: ", res.FieldPermissionDefine), zap.String("result: ", string(resultBody)))
 	return err
+}
+
+func (a *HTTPAuth0Auth) returnError(w http.ResponseWriter, statusCode int, msg []byte) error {
+	w.WriteHeader(statusCode)
+	w.Write(msg)
+	return caddyhttp.Error(statusCode, fmt.Errorf(string(msg)))
 }
